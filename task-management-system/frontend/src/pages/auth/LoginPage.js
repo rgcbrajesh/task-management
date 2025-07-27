@@ -182,20 +182,7 @@ function LoginPage() {
                 </button>
               </div>
 
-              {/* Demo Credentials */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 className="text-sm font-medium text-blue-800 mb-2">
-                  Demo Credentials
-                </h3>
-                <div className="text-xs text-blue-700 space-y-1">
-                  <div>
-                    <strong>Individual User:</strong> user@demo.com / password123
-                  </div>
-                  <div>
-                    <strong>Group Admin:</strong> admin@demo.com / password123
-                  </div>
-                </div>
-              </div>
+        
             </Form>
           )}
         </Formik>
