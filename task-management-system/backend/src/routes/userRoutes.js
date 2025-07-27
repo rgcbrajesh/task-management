@@ -244,68 +244,88 @@ router.put('/notification-settings', validateNotificationSettings, asyncHandler(
 router.get('/dashboard', asyncHandler(async (req, res) => {
   const db = getConnection();
 
+  const userId = req.user.id;
+
+  // Get all group IDs where the user is an admin or member
+  const [adminGroupRows] = await db.execute('SELECT id FROM `groups` WHERE admin_id = ? AND is_active = true', [userId]);
+  const adminGroupIds = adminGroupRows.map(r => r.id);
+
+  const [memberGroupRows] = await db.execute('SELECT group_id FROM group_members WHERE user_id = ?', [userId]);
+  const memberGroupIds = memberGroupRows.map(r => r.group_id);
+  
+  const accessibleGroupIds = [...new Set([...adminGroupIds, ...memberGroupIds])];
+
+  // Build the authorization part of the WHERE clause
+  let authWhereClause = '(t.assigned_to = ?)';
+  const authParams = [userId];
+  if (accessibleGroupIds.length > 0) {
+    const placeholders = accessibleGroupIds.map(() => '?').join(',');
+    authWhereClause += ` OR t.group_id IN (${placeholders})`;
+    authParams.push(...accessibleGroupIds);
+  }
+
   // Get recent tasks
-const [recentTasks] = await db.execute(`
-  SELECT t.id, t.title, t.status, t.priority, t.start_time, t.end_time,
-         u.first_name AS created_by_name, g.name AS group_name
-  FROM tasks t
-  LEFT JOIN users u ON t.created_by = u.id
-  LEFT JOIN \`groups\` g ON t.group_id = g.id
-  WHERE t.assigned_to = ? AND t.is_active = TRUE
-  ORDER BY t.created_at DESC
-  LIMIT 10
-`, [req.user.id]);
+  const [recentTasks] = await db.execute(`
+    SELECT t.id, t.title, t.status, t.priority, t.start_time, t.end_time,
+           u.first_name AS created_by_name, g.name AS group_name
+    FROM tasks t
+    LEFT JOIN users u ON t.created_by = u.id
+    LEFT JOIN \`groups\` g ON t.group_id = g.id
+    WHERE t.is_active = TRUE AND (${authWhereClause})
+    ORDER BY t.created_at DESC
+    LIMIT 10
+  `, authParams);
 
   // Get upcoming tasks (next 7 days)
-const [upcomingTasks] = await db.execute(`
-  SELECT t.id, t.title, t.status, t.priority, t.start_time, t.end_time,
-         u.first_name AS created_by_name, g.name AS group_name
-  FROM tasks t
-  LEFT JOIN users u ON t.created_by = u.id
-  LEFT JOIN \`groups\` g ON t.group_id = g.id
-  WHERE t.assigned_to = ? AND t.is_active = TRUE 
-        AND t.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)
-        AND t.status IN ('pending', 'in_progress')
-  ORDER BY t.start_time ASC
-  LIMIT 10
-`, [req.user.id]);
+  const [upcomingTasks] = await db.execute(`
+    SELECT t.id, t.title, t.status, t.priority, t.start_time, t.end_time,
+           u.first_name AS created_by_name, g.name AS group_name
+    FROM tasks t
+    LEFT JOIN users u ON t.created_by = u.id
+    LEFT JOIN \`groups\` g ON t.group_id = g.id
+    WHERE t.is_active = TRUE AND (${authWhereClause})
+          AND t.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)
+          AND t.status IN ('pending', 'in_progress')
+    ORDER BY t.start_time ASC
+    LIMIT 10
+  `, authParams);
 
   // Get overdue tasks
-const [overdueTasks] = await db.execute(`
-  SELECT t.id, t.title, t.status, t.priority, t.start_time, t.end_time,
-         u.first_name AS created_by_name, g.name AS group_name
-  FROM tasks t
-  LEFT JOIN users u ON t.created_by = u.id
-  LEFT JOIN \`groups\` g ON t.group_id = g.id
-  WHERE t.assigned_to = ? AND t.is_active = TRUE 
-        AND t.end_time < NOW() AND t.status != 'completed'
-  ORDER BY t.end_time ASC
-  LIMIT 10
-`, [req.user.id]);
+  const [overdueTasks] = await db.execute(`
+    SELECT t.id, t.title, t.status, t.priority, t.start_time, t.end_time,
+           u.first_name AS created_by_name, g.name AS group_name
+    FROM tasks t
+    LEFT JOIN users u ON t.created_by = u.id
+    LEFT JOIN \`groups\` g ON t.group_id = g.id
+    WHERE t.is_active = TRUE AND (${authWhereClause})
+          AND t.end_time < NOW() AND t.status != 'completed'
+    ORDER BY t.end_time ASC
+    LIMIT 10
+  `, authParams);
 
   // Get task statistics by priority
   const [priorityStats] = await db.execute(`
-    SELECT 
+    SELECT
       priority,
       COUNT(*) as count,
       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count
-    FROM tasks 
-    WHERE assigned_to = ? AND is_active = true
+    FROM tasks t
+    WHERE t.is_active = true AND (${authWhereClause})
     GROUP BY priority
-  `, [req.user.id]);
+  `, authParams);
 
   // Get completion rate for last 30 days
   const [completionStats] = await db.execute(`
-    SELECT 
-      DATE(created_at) as date,
+    SELECT
+      DATE(t.created_at) as date,
       COUNT(*) as total_tasks,
       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks
-    FROM tasks 
-    WHERE assigned_to = ? AND is_active = true 
-          AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    GROUP BY DATE(created_at)
+    FROM tasks t
+    WHERE t.is_active = true AND (${authWhereClause})
+          AND t.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    GROUP BY DATE(t.created_at)
     ORDER BY date DESC
-  `, [req.user.id]);
+  `, authParams);
 
   res.json({
     success: true,

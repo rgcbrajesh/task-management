@@ -58,7 +58,7 @@ function DashboardPage() {
     );
   }
 
-  const stats = dashboardData?.data || {};
+  const stats = dashboardData?.data?.data || {};
 
   return (
     <div className="space-y-6">
@@ -252,30 +252,7 @@ function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button className="btn btn-primary">
-              Create New Task
-            </button>
-            {user?.user_type === 'group_admin' && (
-              <button className="btn btn-secondary">
-                Create Group
-              </button>
-            )}
-            <button className="btn btn-outline">
-              View All Tasks
-            </button>
-            <button className="btn btn-outline">
-              Settings
-            </button>
-          </div>
-        </div>
-      </div>
+   
     </div>
   );
 }
