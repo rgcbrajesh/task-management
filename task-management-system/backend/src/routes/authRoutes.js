@@ -44,6 +44,7 @@ router.post('/register', validateUserRegistration, asyncHandler(async (req, res)
     'INSERT INTO user_settings (user_id) VALUES (?)',
     [result.insertId]
   );
+console.log("JWT_SECRET loaded:", process.env.JWT_SECRET);
 
   // Generate JWT token
   const token = jwt.sign(

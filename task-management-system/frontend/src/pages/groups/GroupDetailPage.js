@@ -222,7 +222,7 @@ function GroupDetailPage() {
 
   const group = groupData?.data?.data?.group;
   console.log("group",group)
-
+console.log("memberToRemove", memberToRemove);
   if (!group) {
     return (
       <div className="text-center py-12">
@@ -583,7 +583,7 @@ function GroupDetailPage() {
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleRemoveMember(memberToRemove.user_id)}
+                    onClick={() => handleRemoveMember(memberToRemove.id)}
                     disabled={removeMemberMutation.isLoading}
                     className="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-600 disabled:opacity-50"
                   >
