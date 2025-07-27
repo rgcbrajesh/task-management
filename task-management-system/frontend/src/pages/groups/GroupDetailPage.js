@@ -220,7 +220,8 @@ function GroupDetailPage() {
     );
   }
 
-  const group = groupData?.data;
+  const group = groupData?.data?.data?.group;
+  console.log("group",group)
 
   if (!group) {
     return (

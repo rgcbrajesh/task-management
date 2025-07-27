@@ -1,4 +1,5 @@
 const express = require('express');
+const mysql = require('mysql2');
 const { getConnection } = require('../config/database');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticateToken, requireTaskAccess } = require('../middleware/auth');
@@ -39,27 +40,31 @@ router.post('/', validateTaskCreation, asyncHandler(async (req, res) => {
   // If group_id is provided, validate group membership and assignment
   if (group_id) {
     // Check if user is admin of the group or a member
-    const [groupCheck] = await db.execute(`
-      SELECT g.admin_id, gm.user_id as member_id
-      FROM \`groups\` g
-      LEFT JOIN group_members gm ON g.id = gm.group_id AND gm.user_id = ?
-      WHERE g.id = ? AND g.is_active = true
-    `, [req.user.id, group_id]);
+    const [groupCheck] = await db.execute(
+      'SELECT admin_id FROM `groups` WHERE id = ? AND is_active = true',
+      [group_id]
+    );
 
     if (groupCheck.length === 0) {
-      return res.status(403).json({
+      return res.status(404).json({
         success: false,
-        message: 'You do not have access to this group',
+        message: 'Group not found',
       });
     }
 
     const isGroupAdmin = groupCheck[0].admin_id === req.user.id;
-    const isGroupMember = groupCheck[0].member_id === req.user.id;
+
+    const [memberCheck] = await db.execute(
+      'SELECT user_id FROM group_members WHERE group_id = ? AND user_id = ?',
+      [group_id, req.user.id]
+    );
+
+    const isGroupMember = memberCheck.length > 0;
 
     if (!isGroupAdmin && !isGroupMember) {
       return res.status(403).json({
         success: false,
-        message: 'You are not a member of this group',
+        message: 'You are not a member of this group and cannot create tasks for it',
       });
     }
 
@@ -108,11 +113,19 @@ router.post('/', validateTaskCreation, asyncHandler(async (req, res) => {
     });
   }
 
+  // Format dates for MySQL DATETIME format
+  const formatDateTime = (dateString) => {
+    return new Date(dateString).toISOString().slice(0, 19).replace('T', ' ');
+  };
+
+  const formattedStartTime = formatDateTime(start_time);
+  const formattedEndTime = formatDateTime(end_time);
+
   // Create task
   const [result] = await db.execute(`
     INSERT INTO tasks (title, description, start_time, end_time, priority, created_by, assigned_to, group_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `, [title, description, start_time, end_time, priority, req.user.id, assignedUserId, group_id]);
+  `, [title, description, formattedStartTime, formattedEndTime, priority, req.user.id, assignedUserId, group_id]);
 
   // Log task creation
   await db.execute(`
@@ -165,15 +178,26 @@ router.get('/', validatePagination, validateTaskFilters, asyncHandler(async (req
   // Build WHERE clause
   const whereConditions = ['t.is_active = true'];
   const queryParams = [];
+  const userId = req.user.id;
 
-  // User can see tasks they created, are assigned to, or are admin of the group
-  whereConditions.push(`(
-    t.created_by = ? OR
-    t.assigned_to = ? OR
-    t.group_id IN (SELECT id FROM \`groups\` WHERE admin_id = ? AND is_active = true) OR
-    t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?)
-  )`);
-  queryParams.push(req.user.id, req.user.id, req.user.id, req.user.id);
+  // Get all group IDs where the user is an admin or member
+  const [adminGroupRows] = await db.execute('SELECT id FROM `groups` WHERE admin_id = ? AND is_active = true', [userId]);
+  const adminGroupIds = adminGroupRows.map(r => r.id);
+
+  const [memberGroupRows] = await db.execute('SELECT group_id FROM group_members WHERE user_id = ?', [userId]);
+  const memberGroupIds = memberGroupRows.map(r => r.group_id);
+  
+  const accessibleGroupIds = [...new Set([...adminGroupIds, ...memberGroupIds])];
+
+  // Build authorization conditions
+  const authConditions = ['t.created_by = ?', 't.assigned_to = ?'];
+  queryParams.push(userId, userId);
+
+  if (accessibleGroupIds.length > 0) {
+    authConditions.push(`t.group_id IN (${mysql.escape(accessibleGroupIds)})`);
+  }
+  
+  whereConditions.push(`(${authConditions.join(' OR ')})`);
 
   if (status) {
     whereConditions.push('t.status = ?');
@@ -213,7 +237,7 @@ router.get('/', validatePagination, validateTaskFilters, asyncHandler(async (req
   const sortDirection = validSortOrders.includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'DESC';
 
   // Get tasks
-  const [tasks] = await db.execute(`
+  const [tasks] = await db.query(`
     SELECT t.*,
            creator.first_name as created_by_name,
            assignee.first_name as assigned_to_name,
@@ -229,7 +253,7 @@ router.get('/', validatePagination, validateTaskFilters, asyncHandler(async (req
   `, [...queryParams, parseInt(limit), parseInt(offset)]);
 
   // Get total count
-  const [countResult] = await db.execute(`
+  const [countResult] = await db.query(`
     SELECT COUNT(*) as total
     FROM tasks t
     WHERE ${whereConditions.join(' AND ')}

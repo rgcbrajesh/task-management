@@ -70,47 +70,86 @@ router.post('/', validateGroupCreation, asyncHandler(async (req, res) => {
 // @route   GET /api/groups
 // @access  Private
 router.get('/', validatePagination, asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10 } = req.query;
-  const offset = (page - 1) * limit;
-  const db = getConnection();
+    const { page = 1, limit = 10, search = '' } = req.query;
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
+    const db = getConnection();
+    const { id: userId, user_type } = req.user;
+    const isSuperAdmin = user_type === 'superadmin';
 
-  // Get groups where user is admin or member
-  const [groups] = await db.execute(`
-    SELECT g.*,
-           (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count,
-           u.first_name as admin_first_name,
-           u.last_name as admin_last_name
-    FROM \`groups\` g
-    JOIN users u ON g.admin_id = u.id
-    WHERE g.is_active = true AND
-          (g.admin_id = ? OR g.id IN (SELECT group_id FROM group_members WHERE user_id = ?))
-    ORDER BY g.created_at DESC
-    LIMIT ? OFFSET ?
-  `, [req.user.id, req.user.id, parseInt(limit), parseInt(offset)]);
+    if (isNaN(pageNum) || isNaN(limitNum) || pageNum < 1 || limitNum < 1) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid page or limit parameters',
+        });
+    }
 
-  // Get total count
-  const [countResult] = await db.execute(`
-    SELECT COUNT(DISTINCT g.id) AS total
-    FROM \`groups\` g
-    LEFT JOIN group_members gm ON g.id = gm.group_id
-    WHERE g.is_active = TRUE AND (g.admin_id = ? OR gm.user_id = ?)
-  `, [req.user.id, req.user.id]);
+    let allGroups = [];
 
-  const total = countResult[0].total;
-  const totalPages = Math.ceil(total / limit);
+    const baseQuery = `
+        SELECT g.*,
+               (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count,
+               IFNULL(CONCAT(u.first_name, ' ', u.last_name), 'N/A') as created_by_name
+        FROM \`groups\` g
+        LEFT JOIN users u ON g.admin_id = u.id
+        WHERE g.is_active = true
+    `;
 
-  res.json({
-    success: true,
-    data: {
-      groups,
-      pagination: {
-        current_page: parseInt(page),
-        total_pages: totalPages,
-        total_items: total,
-        items_per_page: parseInt(limit),
-      },
-    },
-  });
+    if (isSuperAdmin) {
+        const [groups] = await db.execute(baseQuery);
+        allGroups = groups;
+    } else {
+        // Get groups where user is admin
+        const adminGroupsQuery = `${baseQuery} AND g.admin_id = ?`;
+        const [adminGroups] = await db.execute(adminGroupsQuery, [userId]);
+
+        // Get groups where user is a member
+        const memberGroupsQuery = `
+            ${baseQuery} AND g.id IN (
+                SELECT group_id FROM group_members WHERE user_id = ?
+            )
+        `;
+        const [memberGroups] = await db.execute(memberGroupsQuery, [userId]);
+
+        // Combine and deduplicate
+        const groupMap = new Map();
+        [...adminGroups, ...memberGroups].forEach(group => {
+            groupMap.set(group.id, group);
+        });
+        allGroups = Array.from(groupMap.values());
+    }
+
+    // Apply search filter in-memory
+    const searchTerm = search.trim().toLowerCase();
+    let filteredGroups = allGroups;
+    if (searchTerm) {
+        filteredGroups = allGroups.filter(group =>
+            group.name.toLowerCase().includes(searchTerm) ||
+            (group.description && group.description.toLowerCase().includes(searchTerm))
+        );
+    }
+    
+    // Apply sorting
+    filteredGroups.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Apply pagination in-memory
+    const total = filteredGroups.length;
+    const totalPages = Math.ceil(total / limitNum);
+    const paginatedGroups = filteredGroups.slice(offset, offset + limitNum);
+
+    res.json({
+        success: true,
+        data: {
+            groups: paginatedGroups,
+            pagination: {
+                current_page: pageNum,
+                total_pages: totalPages,
+                total_items: total,
+                items_per_page: limitNum,
+            },
+        },
+    });
 }));
 
 // @desc    Get group by ID

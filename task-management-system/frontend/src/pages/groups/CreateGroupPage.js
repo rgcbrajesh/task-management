@@ -155,6 +155,7 @@ function CreateGroupPage() {
                     id="name"
                     name="name"
                     type="text"
+                    style={{color:"black"}}
                     className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
                       errors.name && touched.name ? 'border-red-300' : ''
                     }`}
@@ -172,6 +173,7 @@ function CreateGroupPage() {
                     id="description"
                     name="description"
                     rows={4}
+                     style={{color:"black"}}
                     className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
                       errors.description && touched.description ? 'border-red-300' : ''
                     }`}
@@ -201,6 +203,7 @@ function CreateGroupPage() {
                               id={`members.${index}.email`}
                               name={`members.${index}.email`}
                               type="email"
+                               style={{color:"black"}}
                               className={`block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
                                 errors.members?.[index]?.email && touched.members?.[index]?.email ? 'border-red-300' : ''
                               }`}

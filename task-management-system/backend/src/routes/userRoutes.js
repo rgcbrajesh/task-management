@@ -350,8 +350,8 @@ router.get('/search', asyncHandler(async (req, res) => {
 
   const [users] = await db.execute(`
   SELECT id, email, first_name, last_name, user_type
-FROM users 
-WHERE is_active = true 
+FROM users
+WHERE is_active = true
       AND (email LIKE ? OR first_name LIKE ? OR last_name LIKE ?)
       AND id != ?
 ORDER BY first_name, last_name

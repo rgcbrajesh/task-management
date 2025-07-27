@@ -93,8 +93,8 @@ function TasksPage() {
   //   );
   // }
 
-  const tasks = tasksData?.data?.tasks || [];
-  const pagination = tasksData?.data?.pagination || {};
+  const tasks = tasksData?.data?.data?.tasks || [];
+  const pagination = tasksData?.data?.data?.pagination || {};
 console.log("Tasks data:", tasksData);
   return (
     <div className="space-y-6">
@@ -127,6 +127,7 @@ console.log("Tasks data:", tasksData);
             <select
               id="status"
               value={filters.status}
+              style={{color:"black"}}
               onChange={(e) => handleFilterChange('status', e.target.value)}
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
             >
@@ -145,6 +146,7 @@ console.log("Tasks data:", tasksData);
             <select
               id="priority"
               value={filters.priority}
+                style={{color:"black"}}
               onChange={(e) => handleFilterChange('priority', e.target.value)}
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
             >
@@ -162,6 +164,7 @@ console.log("Tasks data:", tasksData);
             <select
               id="limit"
               value={filters.limit}
+                style={{color:"black"}}
               onChange={(e) => handleFilterChange('limit', parseInt(e.target.value))}
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
             >

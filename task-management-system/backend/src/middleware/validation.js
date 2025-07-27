@@ -214,11 +214,11 @@ const validatePagination = [
 
 const validateTaskFilters = [
   query('status')
-    .optional()
+    .optional({ checkFalsy: true })
     .isIn(['pending', 'in_progress', 'completed', 'overdue'])
     .withMessage('Status must be pending, in_progress, completed, or overdue'),
   query('priority')
-    .optional()
+    .optional({ checkFalsy: true })
     .isIn(['low', 'medium', 'high'])
     .withMessage('Priority must be low, medium, or high'),
   query('start_date')
@@ -256,7 +256,7 @@ const validateGroupIdParam = [
 ];
 
 const validateTaskIdParam = [
-  param('taskId')
+  param('id')
     .isInt({ min: 1 })
     .withMessage('Task ID must be a positive integer'),
   handleValidationErrors,

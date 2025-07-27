@@ -42,7 +42,7 @@ function CreateTaskPage() {
     'groups',
     () => groupService.getGroups({ page: 1, limit: 100 }),
     {
-      enabled: user?.user_type === 'group_admin',
+      enabled: !!user,
     }
   );
 
@@ -70,6 +70,7 @@ function CreateTaskPage() {
   });
 
   const handleSubmit = async (values, { setSubmitting }) => {
+    console.log("values", values);
     try {
       // Format dates for API
       const taskData = {
@@ -88,9 +89,10 @@ function CreateTaskPage() {
     }
   };
 
-  const groups = groupsData?.data?.groups || [];
-  const groupMembers = groupMembersData?.data?.members || [];
-
+  const groups = groupsData?.data?.data?.groups || [];
+  console.log("groups", groupsData);
+  const groupMembers = groupMembersData?.data?.data?.group?.members || [];
+console.log("groupMembers", groupMembersData);
   // Get current date and time for min values
   const now = new Date();
   const currentDateTime = now.toISOString().slice(0, 16);
@@ -145,6 +147,7 @@ function CreateTaskPage() {
                     id="title"
                     name="title"
                     type="text"
+                    style={{color:"black"}}
                     className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
                       errors.title && touched.title ? 'border-red-300' : ''
                     }`}
@@ -162,6 +165,7 @@ function CreateTaskPage() {
                     id="description"
                     name="description"
                     rows={4}
+                        style={{color:"black"}}
                     className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
                       errors.description && touched.description ? 'border-red-300' : ''
                     }`}
@@ -181,6 +185,7 @@ function CreateTaskPage() {
                     as="select"
                     id="priority"
                     name="priority"
+                      style={{color:"black"}}
                     className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
                       errors.priority && touched.priority ? 'border-red-300' : ''
                     }`}
@@ -201,6 +206,7 @@ function CreateTaskPage() {
                     name="start_time"
                     type="datetime-local"
                     min={currentDateTime}
+                        style={{color:"black"}}
                     className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
                       errors.start_time && touched.start_time ? 'border-red-300' : ''
                     }`}
@@ -216,6 +222,7 @@ function CreateTaskPage() {
                     id="end_time"
                     name="end_time"
                     type="datetime-local"
+                        style={{color:"black"}}
                     min={values.start_time || currentDateTime}
                     className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
                       errors.end_time && touched.end_time ? 'border-red-300' : ''
@@ -226,102 +233,81 @@ function CreateTaskPage() {
               </div>
 
               {/* Assignment Section */}
-              {user?.user_type === 'group_admin' && (
-                <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Assignment</h3>
-                  
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="group_id" className="block text-sm font-medium text-gray-700">
-                        Assign to Group
-                      </label>
-                      {groupsLoading ? (
-                        <div className="mt-1 flex items-center">
-                          <LoadingSpinner size="sm" />
-                          <span className="ml-2 text-sm text-gray-500">Loading groups...</span>
-                        </div>
-                      ) : (
-                        <Field
-                          as="select"
-                          id="group_id"
-                          name="group_id"
-                          onChange={(e) => {
-                            const groupId = e.target.value;
-                            setFieldValue('group_id', groupId);
-                            setSelectedGroup(groupId || null);
-                            setFieldValue('assigned_to', ''); // Reset assigned user when group changes
-                          }}
-                          className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                        >
-                          <option value="">Select a group (optional)</option>
-                          {groups.map((group) => (
-                            <option key={group.id} value={group.id}>
-                              {group.name}
-                            </option>
-                          ))}
-                        </Field>
-                      )}
-                    </div>
-
-                    <div>
-                      <label htmlFor="assigned_to" className="block text-sm font-medium text-gray-700">
-                        Assign to Member
-                      </label>
-                      {membersLoading ? (
-                        <div className="mt-1 flex items-center">
-                          <LoadingSpinner size="sm" />
-                          <span className="ml-2 text-sm text-gray-500">Loading members...</span>
-                        </div>
-                      ) : (
-                        <Field
-                          as="select"
-                          id="assigned_to"
-                          name="assigned_to"
-                          disabled={!selectedGroup}
-                          className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:bg-gray-100"
-                        >
-                          <option value="">
-                            {selectedGroup ? 'Select a member (optional)' : 'Select a group first'}
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Assignment</h3>
+                
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="group_id" className="block text-sm font-medium text-gray-700">
+                      Assign to Group
+                    </label>
+                    {groupsLoading ? (
+                      <div className="mt-1 flex items-center">
+                        <LoadingSpinner size="sm" />
+                        <span className="ml-2 text-sm text-gray-500">Loading groups...</span>
+                      </div>
+                    ) : (
+                      <Field
+                        as="select"
+                        id="group_id"
+                        name="group_id"
+                          style={{color:"black"}}
+                        onChange={(e) => {
+                          const groupId = e.target.value;
+                          setFieldValue('group_id', groupId);
+                          setSelectedGroup(groupId || null);
+                          setFieldValue('assigned_to', ''); // Reset assigned user when group changes
+                        }}
+                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      >
+                        <option value="">Select a group (optional)</option>
+                        {groups.map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.name}
                           </option>
-                          {groupMembers.map((member) => (
-                            <option key={member.user_id} value={member.user_id}>
-                              {member.first_name} {member.last_name} ({member.email})
-                            </option>
-                          ))}
-                        </Field>
-                      )}
-                      {!selectedGroup && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          Select a group to assign to specific members
-                        </p>
-                      )}
-                    </div>
+                        ))}
+                      </Field>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="assigned_to" className="block text-sm font-medium text-gray-700">
+                      Assign to Member
+                    </label>
+                    {membersLoading ? (
+                      <div className="mt-1 flex items-center">
+                        <LoadingSpinner size="sm" />
+                        <span className="ml-2 text-sm text-gray-500">Loading members...</span>
+                      </div>
+                    ) : (
+                      <Field
+                        as="select"
+                        id="assigned_to"
+                        name="assigned_to"
+                          style={{color:"black"}}
+                        disabled={!selectedGroup}
+                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:bg-gray-100"
+                      >
+                        <option value="">
+                          {selectedGroup ? 'Select a member (optional)' : 'Select a group first'}
+                        </option>
+                        {groupMembers.map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.first_name} {member.last_name} ({member.email})
+                          </option>
+                        ))}
+                      </Field>
+                    )}
+                    {!selectedGroup && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Select a group to assign to specific members
+                      </p>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Individual User Assignment */}
-              {user?.user_type === 'individual' && (
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-blue-800">
-                          Individual Task
-                        </h3>
-                        <div className="mt-2 text-sm text-blue-700">
-                          <p>This task will be assigned to you as an individual user.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Form Actions */}
               <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">

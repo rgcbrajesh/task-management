@@ -130,7 +130,7 @@ function TaskDetailPage() {
 
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClasses[status]}`}>
-        {status.replace('_', ' ')}
+        {status}
       </span>
     );
   };
@@ -187,8 +187,8 @@ function TaskDetailPage() {
     );
   }
 
-  const task = taskData?.data;
-
+  const task = taskData?.data?.data?.task;
+  console.log("Task data:", task);
   if (!task) {
     return (
       <div className="text-center py-12">
@@ -441,7 +441,7 @@ function TaskDetailPage() {
                     } disabled:opacity-50`}
                   >
                     {updateStatusMutation.isLoading && <ButtonSpinner />}
-                    Mark as {status.replace('_', ' ')}
+                    Mark as {status}
                   </button>
                 ))}
               </div>

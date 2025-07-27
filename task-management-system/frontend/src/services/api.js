@@ -121,7 +121,10 @@ export const userService = {
 // Task API endpoints
 export const taskService = {
   getTasks: (params = {}) => {
-    const queryString = new URLSearchParams(params).toString();
+    const cleanedParams = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v != null && v !== '')
+    );
+    const queryString = new URLSearchParams(cleanedParams).toString();
     return api.get(`/tasks?${queryString}`);
   },
   getTask: (id) => api.get(`/tasks/${id}`),
